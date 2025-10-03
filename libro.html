@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Libro - Animación de pasar páginas (demo)</title>
+  <style>
+    :root{ --book-w:420px; --book-h:560px; --page-thickness:1px; }
+    body{ font-family:system-ui,Segoe UI,Roboto,Arial; display:flex; align-items:center; justify-content:center; min-height:100vh; background:linear-gradient(180deg,#e6f0ff,#f7fbff); margin:0; }
+    .stage{ display:flex; gap:24px; align-items:center; }
+
+    .book-wrapper{ perspective:1800px; }
+    .book{ width:var(--book-w); height:var(--book-h); position:relative; transform-style:preserve-3d; }
+
+    /* Cada "hoja" */
+    .page{
+      width:100%; height:100%; position:absolute; left:0; top:0; transform-origin:left center; transform-style:preserve-3d;
+      transition:transform 900ms cubic-bezier(.2,.85,.25,1), z-index 0ms linear 0s;
+      box-shadow: 0 12px 30px rgba(0,0,0,0.15);
+      pointer-events:auto;
+    }
+
+    p.letra {
+      font-weight: lighter;
+    }
+
+
+    /* ligera separación para simular grosor (orden en el HTML: página 0 es la más cercana al usuario) */
+    .page[data-index="0"]{ z-index:60; }
+    .page[data-index="1"]{ z-index:55; }
+    .page[data-index="2"]{ z-index:50; }
+    .page[data-index="3"]{ z-index:45; }
+    .page[data-index="4"]{ z-index:40; }
+
+    /* Frente y dorso de la hoja */
+    .page .side{ position:absolute; inset:0; backface-visibility:hidden; display:flex; align-items:center; justify-content:center; padding:28px; box-sizing:border-box; }
+    .front{ background:linear-gradient(180deg,#fff,#fcfeff); border:1px solid rgba(0,0,0,0.06); }
+    .back{ background:linear-gradient(180deg,#fff,#fbfbff); border:1px solid rgba(0,0,0,0.04); transform:rotateY(180deg); }
+
+    /* cuando se voltea la hoja */
+    .page.flipped{ transform:rotateY(-180deg); }
+
+    /* aspecto de texto en páginas */
+    .page h1{ font-size:20px; margin:0 0 6px 0; }
+    .page p{ margin:0; font-size:14px; line-height:1.4; color:#333; font-style:italic;}
+
+    /* borde lateral (lomo) */
+    .spine{ position:absolute; left:0; top:0; height:100%; width:14px; background:linear-gradient(90deg,#ddd,#bbb); border-radius:2px; transform:translateX(-14px); }
+
+    /* controles */
+    .controls{ display:flex; flex-direction:column; gap:10px; }
+    button{ background:#0047b3; color:white; border:0; padding:10px 14px; border-radius:8px; cursor:pointer; font-weight:600; }
+    button:disabled{ opacity:0.45; cursor:default; }
+
+    /* responsive pequeño */
+    @media (max-width:480px){ :root{ --book-w:300px; --book-h:400px } 
+  
+  </style>
+</head>
+<body>
+  <div class="stage">
+    <div class="book-wrapper">
+      <div class="book" id="book">
+        <div class="spine"></div>
+
+        <!-- Cada .page representa una hoja (frente + dorso) -->
+        <div class="page" data-index="0">
+          <div class="side front">
+            <div>      
+            <strong>       
+              <p>EN EL ETERNA TRASCENDENCIA DEL EROS Y EL TANATOS </p> 
+	      <p class="letra">PARTE 1 ÉCFRASIS DUALISTA BY SOREN CAMUS</p>
+              <img   width="100%" height="auto" src="C:\Users\cp_ftorres\OneDrive - Exact Sciences\Pictures\triangle.png" alt="Descripción de la imagen">
+
+            </strong>  
+            </div>
+          </div>
+          <div class="side back">
+            <div>
+              <h1>Autor</h1>
+              <p>Tu nombre aquí</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="page" data-index="1">
+          <div class="side front">
+            <div>
+              <img   width="100%" height="auto" src="C:\Users\cp_ftorres\OneDrive - Exact Sciences\Pictures\lines.png" alt="Descripción de la imagen">
+            </div>
+          </div>
+          <div class="side back">
+            <div>
+              <h1>Capítulo 1 (cont.)</h1>
+              <p>Más texto en el reverso de la hoja.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="page" data-index="2">
+          <div class="side front">
+            <div>
+              <img   width="100%" height="auto" src="C:\Users\cp_ftorres\OneDrive - Exact Sciences\Pictures\portada 1.png" alt="Descripción de la imagen">
+            </div>
+          </div>
+          <div class="side back">
+            <div>
+              <h1>Capítulo 2 (cont.)</h1>
+              <p>Reverso de la hoja.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="page" data-index="3">
+          <div class="side front">
+            <div>
+              <h1>Capítulo 3</h1>
+              <p>Hoja final (antes de la contraportada).</p>
+            </div>
+          </div>
+          <div class="side back">
+            <div>
+              <h1>Contraportada</h1>
+              <p>Gracias por ver la demo.</p>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <div class="controls">
+      <div style="font-size:13px;color:#333;margin-bottom:6px">Controles</div>
+      <button id="prevBtn">Página anterior</button>
+      <button id="nextBtn">Siguiente página</button>
+      <button id="resetBtn" style="background:#666;">Reiniciar</button>
+    </div>
+  </div>
+
+  <script>
+    // Lógica simple: las páginas están en orden y a cada 'next' volcamos la siguiente hoja.
+    const pages = Array.from(document.querySelectorAll('.page'));
+    const nextBtn = document.getElementById('nextBtn');
+    const prevBtn = document.getElementById('prevBtn');
+    const resetBtn = document.getElementById('resetBtn');
+    let current = 0; // número de páginas volteadas
+
+    function updateButtons(){
+      prevBtn.disabled = current === 0;
+      nextBtn.disabled = current >= pages.length;
+    }
+
+    function flipTo(n){
+      // n = cuántas hojas deben estar volteadas (0..pages.length)
+      pages.forEach((p, i)=>{
+        if(i < n) p.classList.add('flipped'); else p.classList.remove('flipped');
+      });
+      current = Math.max(0, Math.min(n, pages.length));
+      updateButtons();
+    }
+
+    nextBtn.addEventListener('click', ()=> flipTo(current+1));
+    prevBtn.addEventListener('click', ()=> flipTo(current-1));
+    resetBtn.addEventListener('click', ()=> flipTo(0));
+
+    // inicializar
+    flipTo(0);
+
+    // Permitir hacer click directo sobre la hoja superior para avanzar/retroceder
+    pages.forEach((p, idx)=>{
+      p.addEventListener('click', (e)=>{
+        // si la hoja está volteada, al hacer click la devolvemos, si no, la volteamos
+        const flipped = p.classList.contains('flipped');
+        if(flipped) flipTo(idx);
+        else flipTo(idx+1);
+      });
+    });
+  </script>
+</body>
+</html>
